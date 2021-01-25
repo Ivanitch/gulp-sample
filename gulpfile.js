@@ -10,6 +10,9 @@ const browserSync = require('browser-sync').create();
 // Подключаем gulp-concat
 const concat = require('gulp-concat');
 
+// Включения частей кода в проект "на лету"
+const bssi = require('browsersync-ssi')
+
 // Подключаем gulp-uglify-es
 const uglify = require('gulp-uglify-es').default;
 
@@ -38,6 +41,18 @@ function browsersync() {
 		server: { baseDir: 'app/' }, // Указываем папку сервера
 		notify: false, // Отключаем уведомления
 		online: true // Режим работы: true или false
+	})
+}
+
+function browsersync() {
+	browserSync.init({
+		server: {
+			baseDir: 'app/',
+			middleware: bssi({ baseDir: 'app/', ext: '.html' })
+		},
+		//tunnel: 'https://site.loca.lt', // Attempt to use the URL https://yousutename.loca.lt
+		notify: false,
+		online: true
 	})
 }
 
