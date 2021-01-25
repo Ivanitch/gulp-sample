@@ -12,6 +12,7 @@ const concat = require('gulp-concat');
 
 // Включения частей кода в проект "на лету"
 const bssi = require('browsersync-ssi')
+	const ssi = require('ssi')
 
 // Подключаем gulp-uglify-es
 const uglify = require('gulp-uglify-es').default;
@@ -38,27 +39,20 @@ const del = require('del');
 // Определяем логику работы Browsersync
 function browsersync() {
 	browserSync.init({ // Инициализация Browsersync
-		server: { baseDir: 'app/' }, // Указываем папку сервера
+		server: {
+		 baseDir: 'app/',
+		 middleware: bssi({ baseDir: 'app/', ext: '.html' })
+		}, // Указываем папку сервера
+		//tunnel: 'https://site.loca.lt', // Attempt to use the URL https://yousutename.loca.lt
 		notify: false, // Отключаем уведомления
 		online: true // Режим работы: true или false
-	})
-}
-
-function browsersync() {
-	browserSync.init({
-		server: {
-			baseDir: 'app/',
-			middleware: bssi({ baseDir: 'app/', ext: '.html' })
-		},
-		//tunnel: 'https://site.loca.lt', // Attempt to use the URL https://yousutename.loca.lt
-		notify: false,
-		online: true
 	})
 }
 
 function scripts() {
 	return src([ // Берём файлы из источников
 		'node_modules/jquery/dist/jquery.min.js', // Пример подключения библиотеки
+		'node_modules/bootstrap/dist/js/bootstrap.min.js',
 		'app/js/app.js', // Пользовательские скрипты, использующие библиотеку, должны быть подключены в конце
 		])
 	.pipe(concat('app.min.js')) // Конкатенируем в один файл
@@ -68,13 +62,24 @@ function scripts() {
 }
 
 function styles() {
-	return src('app/' + preprocessor + '/main.' + preprocessor + '') // Выбираем источник: "app/sass/main.sass" или "app/less/main.less"
+	return src('app/' + preprocessor + '/main.' + preprocessor + ''
+	) // Выбираем источник: "app/sass/main.sass" или "app/less/main.less"
 	.pipe(eval(preprocessor)()) // Преобразуем значение переменной "preprocessor" в функцию
 	.pipe(concat('app.min.css')) // Конкатенируем в файл app.min.js
 	.pipe(autoprefixer({ overrideBrowserslist: ['last 10 versions'], grid: true })) // Создадим префиксы с помощью Autoprefixer
 	.pipe(cleancss( { level: { 1: { specialComments: 0 } }/* , format: 'beautify' */ } )) // Минифицируем стили
 	.pipe(dest('app/css/')) // Выгрузим результат в папку "app/css/"
 	.pipe(browserSync.stream()) // Сделаем инъекцию в браузер
+}
+
+function csslibs() {
+	return src([
+		'node_modules/bootstrap/dist/css/bootstrap.min.css'// Подключаем bootstrap (npm i bootstrap)
+		])
+	.pipe(concat('libs.min.css')) // Конкатенируем в файл libs.min.js
+	.pipe(autoprefixer({ overrideBrowserslist: ['last 10 versions'], grid: true })) // Создадим префиксы с помощью Autoprefixer
+	.pipe(cleancss( { level: { 1: { specialComments: 0 } }/* , format: 'beautify' */ } )) // Минифицируем стили
+	.pipe(dest('app/css/')) // Выгрузим результат в папку "app/css/"
 }
 
 function images() {
@@ -92,6 +97,12 @@ function buildcopy() {
 		'app/**/*.html',
 		], { base: 'app' }) // Параметр "base" сохраняет структуру проекта при копировании
 	.pipe(dest('dist')) // Выгружаем в папку с финальной сборкой
+}
+
+async function buildhtml() {
+	let includes = new ssi('app/', 'dist/', '/**/*.html')
+	includes.compile()
+	del('dist/parts', { force: true })
 }
 
 function cleanimg() {
@@ -127,6 +138,8 @@ exports.scripts = scripts;
 // Экспортируем функцию styles() в таск styles
 exports.styles = styles;
 
+exports.csslibs = csslibs;
+
 // Экспорт функции images() в таск images
 exports.images = images;
 
@@ -134,7 +147,7 @@ exports.images = images;
 exports.cleanimg = cleanimg;
 
 // Создаём новый таск "build", который последовательно выполняет нужные операции
-exports.build = series(cleandist, styles, scripts, images, buildcopy);
+exports.build = series(cleandist, csslibs, styles, scripts, images, buildcopy, buildhtml);
 
 // Экспортируем дефолтный таск с нужным набором функций
-exports.default = parallel(styles, scripts, browsersync, startwatch);
+exports.default = parallel(csslibs, styles, scripts, browsersync, startwatch);
